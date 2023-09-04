@@ -69,6 +69,11 @@ namespace ModelsAnalyzer
                 .Select(p => (p.Project!, p.Compilation!)).ToImmutableArray();
         }
 
+        public override ImmutableArray<Diagnostic> GetAllDiagnostics()
+        {
+            return GetProjectsAndCompilations().SelectMany(pc => pc.Item2.GetDiagnostics()).ToImmutableArray();
+        }
+
         public Solution? Solution { get; private set; }
 
         public ImmutableArray<ProjectLoader> Projects { get; private set; }
@@ -104,14 +109,9 @@ namespace ModelsAnalyzer
             }
         }
 
-        public String GetCompilationDiagnostics()
+        public override ImmutableArray<Diagnostic> GetAllDiagnostics()
         {
-            if(Compilation is null)
-            {
-                return "Project is not compiled.";
-            }
-
-            return String.Join("\n", Compilation.GetDiagnostics());
+            return Compilation?.GetDiagnostics() ?? Enumerable.Empty<Diagnostic>().ToImmutableArray();
         }
 
         public Document FindDocumentByName(string name, StringComparison stringComparison = StringComparison.InvariantCultureIgnoreCase)
@@ -170,6 +170,8 @@ namespace ModelsAnalyzer
         //    Usually this means that the compilation was successful.
         //    You have to compile the project/solution first to get any results.
         public abstract ImmutableArray<(Project, CSharpCompilation)> GetProjectsAndCompilations();
+
+        public abstract ImmutableArray<Diagnostic> GetAllDiagnostics();
 
         public MSBuildWorkspace Workspace { get; private set; }
 

@@ -12,12 +12,12 @@ dependencies = [
     "xmltodict == 0.13.0",
     "rapidfuzz == 3.0.0",
     "numpy == 1.24.3",
-    "scikit-criteria == 0.8.3"
+    "scikit-criteria == 0.8.3",
+    "bidict == 0.22.1"
 ]
 
 [project.scripts]
 renode-models-compare = "RenodeModelsCompare.__main__:main"
 
 [tool.setuptools.packages.find]
-include=["RenodeModelsCompare"]
 exclude = ["Tests", "tests", "build"]

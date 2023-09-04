@@ -7,11 +7,14 @@
 using System.Text;
 using Microsoft.CodeAnalysis;
 using Newtonsoft.Json;
+using System.Linq;
 
 namespace ModelsAnalyzer;
 
 public static class RegisterFieldAnalysisHelpers
 {
+    public record class RegisterGroup(string Name, List<RegisterInfo> Registers);
+
     [Flags]
     // This is unused now
     public enum RegisterSpecialKind
@@ -32,15 +35,19 @@ public static class RegisterFieldAnalysisHelpers
         bool HasValueProviderCb = false
     );
 
+    public record struct ArrayOfRegisters(bool IsArray = false, int Length = 0, int Stride = 0); // Whether the register is replicated many times (DefineMany or a for loop)
+
     public record class RegisterInfo
     (
-        string Name,
+        string Name, // This is the name stated in definition, unless there is none - then same as OriginalName
+        string OriginalName, // This is the name stated in "Registers" enum
         long Address,
         int? Width = null,
         long? ResetValue = null,
         RegisterSpecialKind SpecialKind = RegisterSpecialKind.None,
         CallbackInfo CallbackInfo = new CallbackInfo(),
-        string? ParentReg = null
+        string? ParentReg = null,
+        ArrayOfRegisters ArrayInfo = new ArrayOfRegisters()
     )
     {
         public List<RegisterFieldInfo> Fields { get; init; } = new List<RegisterFieldInfo>();
@@ -109,7 +116,7 @@ public static class RegisterFieldAnalysisHelpers
         [property: JsonIgnore] Location Location,
         RegisterFieldInfoSpecialKind SpecialKind = RegisterFieldInfoSpecialKind.None,
         CallbackInfo CallbackInfo = new CallbackInfo(),
-        string FieldMode = ""
+        List<string>? FieldMode = null
     )
     {
         // Id has no meaning, other than separates fields between code blocks

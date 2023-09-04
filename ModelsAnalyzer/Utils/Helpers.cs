@@ -89,7 +89,7 @@ public static partial class Helpers
         return source.TakeUntilType<SyntaxNode, BlockSyntax>();
     }
 
-    public static IEnumerable<T> EnumToEnumerable<T>()
+    public static IEnumerable<T> EnumToEnumerable<T>() where T : System.Enum
     {
         return Enum.GetValues(typeof(T)).Cast<T>();
     }

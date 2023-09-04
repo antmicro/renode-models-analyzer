@@ -91,7 +91,7 @@ internal class RegisterFieldAnalysis
         var name = String.Empty;
         var kind = RegisterFieldInfoSpecialKind.None;
         bool hasReadCb = false, hasWriteCb = false, hasChangeCb = false, hasValueProviderCb = false;
-        string fieldMode = String.Empty;
+        var fieldMode = new List<string>();
 
         foreach(var arg in analyzedInvocation)
         {
@@ -128,7 +128,7 @@ internal class RegisterFieldAnalysis
                         break;
                     case "mode": // See below
                         kind |= RegisterFieldInfoSpecialKind.VariableAccessMode;
-                        fieldMode = arg.InvokedArgumentExpression.ToString();
+                        fieldMode.AddRange(arg.InvokedArgumentExpression.ToString().Split('|').Select(e => e.Trim()));
                         break;
                 }
 
@@ -151,7 +151,7 @@ internal class RegisterFieldAnalysis
                     break;
                 case "mode":
                     // It's intentional - we want a descriptive name instead of a bit field that is FieldMode
-                    fieldMode = arg.InvokedArgumentExpression.ToString();
+                    fieldMode.AddRange(arg.InvokedArgumentExpression.ToString().Split('|').Select(e => e.Trim()));
                     break;
             }
         }

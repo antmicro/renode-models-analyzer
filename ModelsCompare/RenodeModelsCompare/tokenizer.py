@@ -116,10 +116,10 @@ class TokenizerPipeline():
                 new_tokens += tokenizer(str(token)) if token.atomic != True else [token]
             self.tokens = [*new_tokens]
     
-    def get_tokens(self) -> List[str]:
+    def get_tokens(self) -> List[Token]:
         return self.tokens
     
-    def __call__(self, word: str) -> List[str]:
+    def __call__(self, word: str) -> List[Token]:
         self.run_pipeline(word)
         return self.tokens
 

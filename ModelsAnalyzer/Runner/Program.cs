@@ -130,6 +130,11 @@ public static partial class Runner
         Logger.Info("Compiling...");
         await projectLoader.Compile();
 
+        if(Options.CurrentOptions.PrintCompilationDiagnostics)
+        {
+            Console.WriteLine(projectLoader.GetAllDiagnostics().Where(t => t.Severity >= DiagnosticSeverity.Info).ForEachAndJoinToString("\n"));
+        }
+
         var analyzerOptions = new AnalyzerOptions(ImmutableArray.Create<AdditionalText>());
 
         var projectsAndCompilations = projectLoader.GetProjectsAndCompilations();

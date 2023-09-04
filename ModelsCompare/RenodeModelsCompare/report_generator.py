@@ -8,7 +8,7 @@ import os
 import re
 from datetime import datetime
 from typing import Iterator, List
-from RenodeModelsCompare.register import Register, RegistersGroup, Field
+from RenodeModelsCompare.registers.register import Register, RegistersGroup, Field
 
 # disable escaping html tags in PrettyTable
 import html
@@ -16,7 +16,7 @@ html.escape = lambda *args, **kwargs: args[0]
 from prettytable import PrettyTable
 
 class ReportGenerator:
-    __slots__ = ['peripheral_name', 'reg_json']
+    __slots__ = ['peripheral_name', 'reg_json', 'diagnostics']
 
     def __enter__(self):
         return self
@@ -25,28 +25,34 @@ class ReportGenerator:
         pass
 
     @staticmethod
-    def _hex_or_none(e: int) -> 'int|None':
+    def _hex_or_none(e: int) -> 'str|None':
         return hex(e) if e is not None else e
     
     @staticmethod
     def file_to_peripheral_name(filename: str) -> str:
         return re.split('(\.cs-[a-zA-Z]+[iI]nfo\.json)', os.path.basename(filename), maxsplit=1)[0]
 
-    def load_reg_info(self, peripheral_name: str, reg_group: RegistersGroup) -> 'ReportGenerator':
+    def load_reg_info(self, peripheral_name: str, reg_group: List[RegistersGroup]) -> 'ReportGenerator':
         self.peripheral_name = peripheral_name
         self.reg_json = reg_group
         return self
 
     def generate_report(self) -> None:
-        regs_table = self.get_register_table(self.reg_json, self.peripheral_name)
-        print(regs_table)
-        for register in self.reg_json:
-            if fields := register['Fields']:
-                print(register["Name"])
-                fields_table = self.get_register_fields_table(fields, register, self.peripheral_name, register['Name'])
-                print(fields_table)
+        for group in self.reg_json:
+            print(f'#### {group.GroupName} ###')
+            regs_table = self.get_register_table(group.Registers, group.GroupName, self.peripheral_name)
+            print(regs_table)
+            for register in group:
+                # omit field table generation for identical registers
+                if register['ParentReg']:
+                    continue
 
-    def _add_register_row(self, register: Register, peripheral_name: str, regsTable: PrettyTable) -> None:
+                if fields := register['Fields']:
+                    print(register["Name"])
+                    fields_table = self.get_register_fields_table(fields, register, group.GroupName, self.peripheral_name, register['Name'])
+                    print(fields_table)
+
+    def _add_register_row(self, register: Register, group_name: str, peripheral_name: str, regsTable: PrettyTable) -> None:
         reg_name = register["Name"]
         if register["ParentReg"]:
             reg_name += ' [M]'
@@ -60,7 +66,7 @@ class ReportGenerator:
             ', '.join(register.get_callback_info())
         ])
 
-    def _add_fields_row(self, field: Field, reg_json: Register, peripheral_name: str, register_name: str, fieldsTable: PrettyTable) -> None:
+    def _add_fields_row(self, field: Field, reg_json: Register, group_name: str, peripheral_name: str, register_name: str, fieldsTable: PrettyTable) -> None:
         fieldsTable.add_row([
             field['UniqueId'],
             field["Name"] or "[No name]",
@@ -71,24 +77,24 @@ class ReportGenerator:
             ', '.join(field.get_callback_info())
         ])
 
-    def get_register_table(self, reg_json: Register, peripheral_name: str) -> PrettyTable:
+    def get_register_table(self, reg_json: List[Register], group_name: str, peripheral_name: str) -> PrettyTable:
         regsTable = PrettyTable()
         regsTable.field_names = ['Offset', 'Name', 'Width', 'Reset Value', 'Advanced info', 'Callbacks']
         for register in sorted(reg_json, key=lambda reg: reg["Address"]):
-            self._add_register_row(register, peripheral_name, regsTable)
+            self._add_register_row(register, group_name, peripheral_name, regsTable)
         return regsTable
     
-    def get_register_fields_table(self, fields_json_fragment: Field, reg_json: Register, peripheral_name: str, register_name: str) -> PrettyTable:
+    def get_register_fields_table(self, fields_json_fragment: Field, reg_json: Register, group_name: str, peripheral_name: str, register_name: str) -> PrettyTable:
         fieldsTable = PrettyTable()
         fieldsTable.field_names = ['Id', 'Name', 'Bits', 'Access Mode', 'Advanced Info', 'Renode Generator', 'Callbacks']
 
         for field in sorted(fields_json_fragment, key=lambda fl: (fl["BlockId"], fl["Range"]["Start"])):
-            self._add_fields_row(field, reg_json, peripheral_name, register_name, fieldsTable)
+            self._add_fields_row(field, reg_json, group_name, peripheral_name, register_name, fieldsTable)
 
         return fieldsTable
 
 class HtmlReportGenerator(ReportGenerator):
-    __slots__ = ['file_name', '_file', 'peripheral_names', 'diagnostics']
+    __slots__ = ['file_name', '_file', 'peripheral_names']
 
     def __init__(self, output_file_name: str = None) -> None:
         self.file_name = output_file_name or f'report-{datetime.now().strftime("%d%m%Y-%H%M%S")}.html'
@@ -108,17 +114,17 @@ class HtmlReportGenerator(ReportGenerator):
         self._file.close()
 
     @staticmethod
-    def _get_register_fields_name(peripheral_name: str, register_name: str) -> str:
-        return f'{peripheral_name}-fields-{register_name}'
+    def _get_register_fields_name(peripheral_name: str, group_name: str, register_name: str) -> str:
+        return f'{peripheral_name}-fields-{group_name}-{register_name}'
 
-    def _add_register_row(self, register: Register, peripheral_name: str, regsTable: PrettyTable) -> None:
-        reg_name = f'<span id="{peripheral_name}-{register["Name"]}">' + register["Name"] + '</span>'
+    def _add_register_row(self, register: Register, group_name: str, peripheral_name: str, regsTable: PrettyTable) -> None:
+        reg_name = f'<span id="{peripheral_name}-{group_name}-{register["Name"]}">' + register.Name + '</span>'
 
         if parent := register["ParentReg"]:
             reg_name += f' [See: {parent}]'
-            reg_name = f'<a href="#{peripheral_name}-{parent}">' + reg_name + '</a>'
+            reg_name = f'<a href="#{peripheral_name}-{group_name}-{parent}">' + reg_name + '</a>'
         elif register["Fields"]:
-            reg_name = f'<a href="#{self._get_register_fields_name(peripheral_name, register["Name"])}">' + reg_name + '</a>'
+            reg_name = f'<a href="#{self._get_register_fields_name(peripheral_name, group_name, register.Name)}">' + reg_name + '</a>'
         
         regsTable.add_row([
             hex(register["Address"]),
@@ -129,10 +135,10 @@ class HtmlReportGenerator(ReportGenerator):
             ', '.join(register.get_callback_info())
         ])
 
-    def _add_fields_row(self, field: Field, reg_json: Register, peripheral_name: str, register_name: str, fieldsTable: PrettyTable) -> None:
+    def _add_fields_row(self, field: Field, reg_json: Register, group_name: str, peripheral_name: str, register_name: str, fieldsTable: PrettyTable) -> None:
         name = field["Name"] or "[No name]"
 
-        name = f'<span id={self._get_register_fields_name(peripheral_name, register_name)}-{field["UniqueId"]}>' + name + '</span>'
+        name = f'<span id={self._get_register_fields_name(peripheral_name, group_name, register_name)}-{field["UniqueId"]}>' + name + '</span>'
 
         fieldsTable.add_row([
             field['UniqueId'],
@@ -214,22 +220,28 @@ class HtmlReportGenerator(ReportGenerator):
         self.peripheral_names.append(self.peripheral_name)
         
         self.print_diagnostics()
-        self.print_additional_stats(self.reg_json)
+        for group in self.reg_json:
+            self.print_additional_stats(group)
 
-        table = self.get_register_table(self.reg_json, self.peripheral_name)
-        html = table.get_html_string(attributes={'id': f'{self.peripheral_name}-registers', 'class': 'register-table-style', 'width': '80%'})
-        self._file.write(html)
+            table = self.get_register_table(group, group.GroupName, self.peripheral_name)
+            html = table.get_html_string(attributes={'id': f'{self.peripheral_name}-{group.GroupName}-registers', 'class': 'register-table-style', 'width': '80%'})
+            self._file.write(html)
 
-        for register in sorted(self.reg_json, key=lambda reg: reg["Address"]):
-            if fields := register["Fields"]:
-                self._file.write(f'<h3 id="{self._get_register_fields_name(self.peripheral_name, register["Name"])}">{register["Name"]}</h3>')
-                self._file.write(f'<p> Tags: [{self._count_tags(fields)} tags/{len(fields)} fields] </p>')
+        for group in self.reg_json:
+            for register in sorted(group, key=lambda reg: reg["Address"]):
+                # omit field table generation for identical registers
+                if register['ParentReg']:
+                    continue
 
-                self.write_register_bits_table(self.peripheral_name, register["Width"], register)
+                if fields := register["Fields"]:
+                    self._file.write(f'<h3 id="{self._get_register_fields_name(self.peripheral_name, group.GroupName, register["Name"])}">{register["Name"]}</h3>')
+                    self._file.write(f'<p> Tags: [{self._count_tags(fields)} tags/{len(fields)} fields] </p>')
 
-                table = self.get_register_fields_table(fields, register, self.peripheral_name, register['Name'])
-                html = table.get_html_string(attributes={'id': self.peripheral_name + '-fields', 'class': 'fields-table-style', 'width': '80%'})
-                self._file.write(html)
+                    self.write_register_bits_table(self.peripheral_name, register["Width"], group.GroupName, register)
+
+                    table = self.get_register_fields_table(fields, register, group.GroupName, self.peripheral_name, register['Name'])
+                    html = table.get_html_string(attributes={'id': self.peripheral_name + f'-{group.GroupName}-fields', 'class': 'fields-table-style', 'width': '80%'})
+                    self._file.write(html)
 
     def write_reset_bits_row(self, reset_value: int, reg_width: int):
         if not reg_width or reg_width <= 0 or not reset_value or reset_value == 0:
@@ -253,14 +265,14 @@ class HtmlReportGenerator(ReportGenerator):
         self._file.write('</tr>')
 
     # this won't be displayed in console mode - the table is painstakingly constructed for html report
-    def write_register_bits_table(self, peripheral_name: str, width: int, register_json: Register) -> None:
+    def write_register_bits_table(self, peripheral_name: str, width: int, group_name: str, register_json: Register) -> None:
         if width <= 0:
             raise ValueError("Invalid width")
 
         fields = sorted(register_json["Fields"], key=lambda a: (-a["BlockId"], a["Range"]["End"]), reverse=True)
 
         self._file.write(f'''
-        <table class="register-fields-table" id="{peripheral_name}-{register_json["Name"]}-bits-table">
+        <table class="register-fields-table" id="{peripheral_name}-{group_name}-{register_json["Name"]}-bits-table">
             <thead>
                 <tr>
                     <th>
@@ -328,7 +340,7 @@ class HtmlReportGenerator(ReportGenerator):
                 elif field['Range']['End'] == position:
                     self._file.write(f'''
                         <td colspan={field_len}>
-                            <a href="#{self._get_register_fields_name(peripheral_name, register_json['Name'])}-{field['UniqueId']}"> {field['UniqueId']} </a>
+                            <a href="#{self._get_register_fields_name(peripheral_name, group_name, register_json['Name'])}-{field['UniqueId']}"> {field['UniqueId']} </a>
                         </td>
                     ''')
                     position -= field_len

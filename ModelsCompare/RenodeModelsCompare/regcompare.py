@@ -16,7 +16,7 @@ from rapidfuzz.distance import Levenshtein
 from RenodeModelsCompare.synonyms import SynonymsGen, WordGen
 from RenodeModelsCompare.tokenizer import TokenizerPipeline, Token, get_default_tokenizer_pipeline, NameTokenizer
 
-from RenodeModelsCompare.register import RegistersGroup, Register
+from RenodeModelsCompare.registers.register import RegistersGroup, Register
 
 @total_ordering
 class MatchType:
@@ -73,7 +73,7 @@ class MatchType:
         return cls(0, word_a, word_b, False)
 
 class WordCompare:
-    def __init__(self, *, synonyms_gen: SynonymsGen = None, tokenizer_pipeline: TokenizerPipeline = None, names: List[str] = []) -> None:
+    def __init__(self, *, synonyms_gen: 'SynonymsGen|None' = None, tokenizer_pipeline: 'TokenizerPipeline|None' = None, names: List[str] = []) -> None:
         # destroy zero-length or None specimens
         self.names = list(filter(lambda a: a, names))
 
@@ -367,7 +367,7 @@ class RegCompare:
         if match_names:
             cmpr = WordCompare(
                 synonyms_gen=SynonymsGen(gen_without_vowels=True),
-                names=[self.regs1.name, self.regs2.name]
+                names=[self.regs1.peripheral_name, self.regs2.peripheral_name]
             )
             
             cmpr.register_comparator(MatchSimple()).register_comparator(MatchRelaxed()).register_comparator(MatchFirstLetters())
@@ -416,6 +416,6 @@ class RegCompare:
             matches_cnt = len(cmpr.best_matches.values())
             avg_certainty = 0 if matches_cnt == 0 else sum(i.match for i in cmpr.best_matches.values()) / matches_cnt
             
-            return RegCompare.CompareResult((self.regs1.name, self.regs2.name), reg1_heavy, reg2_heavy, unmatched, avg_certainty)
+            return RegCompare.CompareResult((self.regs1.peripheral_name, self.regs2.peripheral_name), reg1_heavy, reg2_heavy, unmatched, avg_certainty)
 
         return None

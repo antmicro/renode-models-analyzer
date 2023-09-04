@@ -43,30 +43,52 @@ public class RegisterAnalysis
     public RegisterInfo GetRegisterInfo(RegisterEnumField registerElement)
     {
         // This register has been implicitly declared previously, e.g. by DefineMany with step - there will be no new fields to analyze
-        if(GetParentRegisterName(registerElement) is string parentReg)
+        if(GetDummyReg(registerElement) is DummyReg reg)
         {
-            return new RegisterInfo(registerElement.RegisterSymbol.Name, registerElement.RegisterAddress, ParentReg: parentReg);
+            // We transcribe some properties from the parent reg, so the output format is more consistent and easier to read
+            return new RegisterInfo(
+                registerElement.RegisterSymbol.Name,
+                registerElement.RegisterSymbol.Name,
+                registerElement.RegisterAddress,
+                reg.ParentRegisterInfoPointer.Width,
+                reg.ParentRegisterInfoPointer.ResetValue,
+                CallbackInfo: reg.ParentRegisterInfoPointer.CallbackInfo,
+                SpecialKind: reg.ParentRegisterInfoPointer.SpecialKind,
+                ParentReg: reg.ParentRegisterInfoPointer.Name
+            )
+            {
+                Fields = reg.ParentRegisterInfoPointer.Fields
+            };
         }
 
         // TODO: consider only definition locations
         var aggregatedInvocations = ExpandRegisterCreation(registerElement, out var width);
         if(aggregatedInvocations is null)
         {
-            return new RegisterInfo(registerElement.RegisterSymbol.Name, registerElement.RegisterAddress, SpecialKind: RegisterSpecialKind.MaybeUndefined);
+            return new RegisterInfo(registerElement.RegisterSymbol.Name, registerElement.RegisterSymbol.Name, registerElement.RegisterAddress, SpecialKind: RegisterSpecialKind.MaybeUndefined);
         }
 
-        var coverageGenerators = HandleDefinition(aggregatedInvocations, registerElement, out var callbackInfo, out var regName, out var resetValue, out var isDefined);
+        var coverageGenerators = HandleDefinition(aggregatedInvocations, registerElement, out var partialRegisterInfo, out var isDefined);
         var fieldInfoList = fieldAnalysis.ObtainCoverageFromCallChains(SemanticModel, coverageGenerators);
 
         var ret = new RegisterInfo(
-            String.IsNullOrEmpty(regName) ? registerElement.RegisterSymbol.Name : regName,
+            String.IsNullOrEmpty(partialRegisterInfo.Name) ? registerElement.RegisterSymbol.Name : partialRegisterInfo.Name,
+            registerElement.RegisterSymbol.Name,
             registerElement.RegisterAddress,
             width,
-            resetValue,
-            CallbackInfo: callbackInfo,
-            SpecialKind: !isDefined ? RegisterSpecialKind.NoDefineFound : RegisterSpecialKind.None
+            partialRegisterInfo.ResetValue,
+            CallbackInfo: partialRegisterInfo.CallbackInfo,
+            SpecialKind: !isDefined ? RegisterSpecialKind.NoDefineFound : RegisterSpecialKind.None,
+            ArrayInfo: partialRegisterInfo.Array
         );
         ret.Fields.AddRange(fieldInfoList);
+
+        // Link the children to the parent (DefineMany), so we can recover common properties later
+        foreach(var dummyReg in partialRegisterInfo.LinkedDummyRegs)
+        {
+            dummyReg.ParentRegisterInfoPointer = ret;
+        }
+
         return ret;
     }
 
@@ -85,15 +107,15 @@ public class RegisterAnalysis
         {
             return;
         }
-        _ = HandleDefinition(aggregatedInvocations, registerElement, out _, out _, out _, out _);
+        _ = HandleDefinition(aggregatedInvocations, registerElement, out _, out _);
     }
 
-    /// <summary> Get parent register's name - the one where DefineMany was invoked </summary>
-    public string? GetParentRegisterName(RegisterEnumField registerElement)
+    /// <summary> Get parent register - the one where DefineMany was invoked </summary>
+    public DummyReg? GetDummyReg(RegisterEnumField registerElement)
     {
-        if(DummyRegs.TryGetValue(registerElement.RegisterAddress, out var parentReg))
+        if(DummyRegs.TryGetValue(registerElement.RegisterAddress, out var dummyReg))
         {
-            return parentReg.Name;
+            return dummyReg;
         }
         return null;
     }
@@ -141,6 +163,9 @@ public class RegisterAnalysis
         }
         else
         {
+            // Try to obtain width if all else failed, but don't try to search for field coverage
+            // registerFormatIdentifier.IsRegisterUsedInSwitchStatement(location, registerElement.RegisterSymbol, out currentWidth);
+
             Logger.Debug("Skipping coverage analysis for {name} at line,column: {location} - coverage analysis is only supported for declarative definition syntax.",
                 registerElement.RegisterSymbol.Name,
                 location.GetMappedLineSpan().StartLinePosition);
@@ -201,11 +226,16 @@ public class RegisterAnalysis
                 || (symbol is IMethodSymbol && symbol.Name == "CreateRWRegister");
     }
 
-    private IList<InvocationExpressionSyntax> HandleDefinition(IEnumerable<ExpressionSyntax> expressions, RegisterEnumField registerElement, out CallbackInfo callbackInfo, out string? name, out long? resetValue, out bool isDefined)
+
+    private record class PartialRegisterInfo(string? Name, CallbackInfo CallbackInfo, long? ResetValue, ArrayOfRegisters Array, List<DummyReg> LinkedDummyRegs);
+
+    private IList<InvocationExpressionSyntax> HandleDefinition(IEnumerable<ExpressionSyntax> expressions, RegisterEnumField registerElement, out PartialRegisterInfo partialRegisterInfo, out bool isDefined)
     {
         bool hasWriteCb = false, hasReadCb = false, hasChangeCb = false;
-        name = null;
-        resetValue = null;
+        string? name = null;
+        long? resetValue = null;
+        var linkedDummyRegs = new List<DummyReg>();
+        var isArrayOfRegister = new ArrayOfRegisters(false, 0, 0);
 
         var coverageGenerators = new List<InvocationExpressionSyntax>();
         var expandedExpressions = new List<ExpressionSyntax>();
@@ -311,9 +341,11 @@ public class RegisterAnalysis
                 name = (string?)analyzedInvocation.SingleOrDefault(p => p.ArgumentName == "name" && p.IsValueConst)?.ConstValue.Value;
                 if(symbol.Name == "DefineMany")
                 {
-                    foreach((var childRegisterAddr, var childRegister) in GetRegistersCreatedByDefineMany(registerElement, analyzedInvocation))
+                    foreach((var childRegisterAddr, var childRegister) in GetRegistersCreatedByDefineMany(registerElement, analyzedInvocation, out isArrayOfRegister))
                     {
-                        DummyRegs.Add(childRegisterAddr, childRegister);
+                        var dummyReg = new DummyReg(childRegister, null!);
+                        DummyRegs.Add(childRegisterAddr, dummyReg);
+                        linkedDummyRegs.Add(dummyReg);
                     }
                 }
                 continue;
@@ -326,17 +358,20 @@ public class RegisterAnalysis
         }
 
         // we now have filtered out Defines and callback injectors (WithXCallback)
-        callbackInfo = new CallbackInfo(hasReadCb, hasWriteCb, hasChangeCb);
+        partialRegisterInfo = new PartialRegisterInfo(name, new CallbackInfo(hasReadCb, hasWriteCb, hasChangeCb), resetValue, isArrayOfRegister, linkedDummyRegs);
         return coverageGenerators;
     }
 
-    private IList<(long, ISymbol)> GetRegistersCreatedByDefineMany(RegisterEnumField registerElement, IEnumerable<ResolvedFunctionArgument> analyzedInvocation)
+    private IList<(long, ISymbol)> GetRegistersCreatedByDefineMany(RegisterEnumField registerElement, IEnumerable<ResolvedFunctionArgument> analyzedInvocation, out ArrayOfRegisters arrayOfRegister)
     {
         var rets = new List<(long, ISymbol)>();
+        arrayOfRegister = new ArrayOfRegisters(true, 0, 0);
         try
         {
             var defineManyCount = (int)Convert.ChangeType(analyzedInvocation.Single(p => p.ArgumentName == "count" && p.IsValueConst).ConstValue.Value!, typeof(int));
             var defineManyStep = (int)Convert.ChangeType(analyzedInvocation.Single(p => p.ArgumentName == "stepInBytes" && p.IsValueConst).ConstValue.Value!, typeof(int));
+            arrayOfRegister = new ArrayOfRegisters(true, defineManyCount, defineManyStep);
+
             Logger?.Trace("DefineMany registers with step {step} and count {count}", defineManyStep, defineManyCount);
             for(var i = 0; i < defineManyCount; ++i)
             {
@@ -395,10 +430,14 @@ public class RegisterAnalysis
 
                 if(node.Parent is MemberAccessExpressionSyntax ms)
                 {
-                    // If node accesses .Value member skip this
-                    if(ms.Name.Identifier.ToString() == "Value")
+                    // VERY special case if the register is named literally "Value" then it's a member of the enum - if so don't skip
+                    if(!(SemanticModel.GetSymbolInfo(ms.Expression).Symbol is INamedTypeSymbol ns && ns.EnumUnderlyingType is not null))
                     {
-                        continue;
+                        // If node accesses .Value member skip this - we are reading a register's field value here
+                        if(ms.Name.Identifier.ToString() == "Value")
+                        {
+                            continue;
+                        }
                     }
                 }
 
@@ -447,7 +486,17 @@ public class RegisterAnalysis
     };
 
     // currently only Regs declared by DefineMany
-    private readonly Dictionary<long, ISymbol> DummyRegs = new();
+    public class DummyReg
+    {
+        public DummyReg(ISymbol symbol, RegisterInfo parentRegisterInfoPointer)
+        {
+            Symbol = symbol;
+            ParentRegisterInfoPointer = parentRegisterInfoPointer;
+        }
+        public ISymbol Symbol;
+        public RegisterInfo ParentRegisterInfoPointer;
+    }
+    private readonly Dictionary<long, DummyReg> DummyRegs = new();
 
     private readonly RegisterFieldAnalysis fieldAnalysis;
     private readonly RegisterFormatIdentifier registerFormatIdentifier;

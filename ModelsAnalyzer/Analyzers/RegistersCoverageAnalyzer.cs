@@ -12,8 +12,11 @@ using static ModelsAnalyzer.RegisterFieldAnalysisHelpers;
 
 namespace ModelsAnalyzer;
 
+using RegisterInfoGroup = List<RegisterGroup>;
+using RegisterInfoGroupInternal = Dictionary<string, List<RegisterInfo>>;
+
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-public class RegistersCoverageAnalyzer : DiagnosticAnalyzer, IAnalyzerWithStatus, IAnalyzerWithExtraInfo<List<RegisterInfo>>
+public class RegistersCoverageAnalyzer : DiagnosticAnalyzer, IAnalyzerWithStatus, IAnalyzerWithExtraInfo<RegisterInfoGroup>
 {
     public RegistersCoverageAnalyzer()
     {
@@ -28,7 +31,10 @@ public class RegistersCoverageAnalyzer : DiagnosticAnalyzer, IAnalyzerWithStatus
 
     public string AnalyzerSuffix { get; } = "registersInfo";
     public bool ShouldBeSerialized { get; private set; } = false;
-    public List<RegisterInfo> AnalyzerExtraInfo { get; } = new();
+
+    private readonly RegisterInfoGroupInternal analyzerRegisterGroups = new();
+    public RegisterInfoGroup AnalyzerExtraInfo { get; private set; } = new();
+    private readonly object @lock = new();
 
     private readonly Action setStatusError;
     private readonly Action setStatusIncomplete;
@@ -38,40 +44,60 @@ public class RegistersCoverageAnalyzer : DiagnosticAnalyzer, IAnalyzerWithStatus
         context.EnableConcurrentExecution();
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.Analyze | GeneratedCodeAnalysisFlags.ReportDiagnostics);
 
+        analyzerRegisterGroups.Clear();
         AnalyzerExtraInfo.Clear();
         ShouldBeSerialized = false;
         AnalyzerStatus.Reset();
 
         context.RegisterSemanticModelAction(ctx =>
         {
-            registerAnalysis = new RegisterAnalysis(ctx.SemanticModel, Logger, setStatusIncomplete, setStatusError);
-            var registers = RegisterEnumAnalyzerHelper.FindRegistersSymbols(ctx.SemanticModel);
+            var registerAnalysis = new RegisterAnalysis(ctx.SemanticModel, Logger, setStatusIncomplete, setStatusError);
+            var enumAnalysis = new RegisterEnumAnalysis(ctx.SemanticModel);
+            var registerGroups = enumAnalysis.FindRegistersSymbols();
 
-            if(!registers.Any())
+            if(!registerGroups.Any())
             {
                 Logger.Debug("No Registers enum, this analysis won't run.");
                 AnalyzerStatus.Skip();
                 return;
             }
 
-            foreach(var reg in registers)
+            foreach(var group in registerGroups)
             {
-                var parsedRegister = DoAnalysis(ctx, reg);
-                ReportGapsInCoverage(ctx, parsedRegister, reg);
-                ReportOverlappingRanges(ctx, parsedRegister);
+                foreach(var register in group.Registers)
+                {
+                    var parsedRegister = DoAnalysis(ctx, registerAnalysis, group.Name, register);
+                    ReportGapsInCoverage(ctx, parsedRegister, register);
+                    ReportOverlappingRanges(ctx, parsedRegister);
+                }
+            }
+
+            lock(@lock)
+            {
+                foreach(var kval in analyzerRegisterGroups)
+                {
+                    AnalyzerExtraInfo.Add(new RegisterGroup(kval.Key, kval.Value));
+                }
             }
 
             AnalyzerStatus.Pass();
         });
     }
 
-    private RegisterInfo DoAnalysis(SemanticModelAnalysisContext context, RegisterEnumField register)
+    private RegisterInfo DoAnalysis(SemanticModelAnalysisContext context, RegisterAnalysis registerAnalysis, string GroupName, RegisterEnumField register)
     {
-        var currentRegister = registerAnalysis!.GetRegisterInfo(register);
+        var currentRegister = registerAnalysis.GetRegisterInfo(register);
 
         Logger.Trace("Got register: {register}", currentRegister);
 
-        AnalyzerExtraInfo.Add(currentRegister);
+        lock(@lock)
+        {
+            if(!analyzerRegisterGroups.TryAdd(GroupName, new List<RegisterInfo> { currentRegister }))
+            {
+                analyzerRegisterGroups[GroupName].Add(currentRegister);
+            }
+        }
+
         ShouldBeSerialized = true;
 
         return currentRegister;
@@ -179,5 +205,4 @@ public class RegistersCoverageAnalyzer : DiagnosticAnalyzer, IAnalyzerWithStatus
     }
 
     private static readonly NLog.Logger Logger = NLog.LogManager.GetCurrentClassLogger();
-    private RegisterAnalysis? registerAnalysis;
 }

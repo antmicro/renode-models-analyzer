@@ -6,6 +6,8 @@
 //
 using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace ModelsAnalyzer;
 
@@ -74,6 +76,21 @@ public static class TypeHelpers
     {
         return s.GetType().GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
             .SingleOrDefault(e => typePropertyRegex.IsMatch(e.Name))?.GetValue(s) as ITypeSymbol;
+    }
+
+    /// <summary>
+    /// This function should return the original TypeInfo for expression - that is before explicit cast
+    /// </summary>
+    public static TypeInfo GetOriginalTypeInfo(this SemanticModel semanticModel, ExpressionSyntax expression)
+    {
+        var expr = expression switch
+        {
+            CastExpressionSyntax e => e.Expression,
+            IsPatternExpressionSyntax e => e.Expression,
+            BinaryExpressionSyntax e when e.IsKind(SyntaxKind.AsExpression) => e.Left,
+            _ => expression
+        };
+        return semanticModel.GetTypeInfo(expr);
     }
 
 }

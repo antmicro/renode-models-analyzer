@@ -19,8 +19,12 @@ public class RegisterFormatIdentifier
         OnInvalidState = onInvalidState;
     }
 
-    public bool IsRegisterUsedInSwitchStatement(Location location, in ISymbol s)
+    public bool IsRegisterUsedInSwitchStatement(Location location, ISymbol s)
+        => IsRegisterUsedInSwitchStatement(location, s, out _);
+
+    public bool IsRegisterUsedInSwitchStatement(Location location, ISymbol s, out int? width)
     {
+        width = null;
         var node = SemanticModel.SyntaxTree.GetSyntaxNodeFromLocation(location);
         var switchAncestors = node.Ancestors().OfType<SwitchStatementSyntax>();
         //var methodAncestors = node.Ancestors().OfType<MethodDeclarationSyntax>();
@@ -31,9 +35,11 @@ public class RegisterFormatIdentifier
         foreach(var sw in switchAncestors)
         {
             // if above us is a switch case that casts some offset val to Register enum this might be a way to simulate access (e.g. AppUart.cs)
+            var originalType = SemanticModel.GetOriginalTypeInfo(sw.Expression);
             var convertedType = SemanticModel.GetTypeInfo(sw.Expression).ConvertedType;
             if(SymbolEqualityComparer.Default.Equals(s.ContainingType, convertedType))
             {
+                width = GuessWidthFromBuiltInType(originalType.Type?.SpecialType);
                 return true;
             }
             else
@@ -46,6 +52,18 @@ public class RegisterFormatIdentifier
         }
 
         return false;
+    }
+
+    private static int? GuessWidthFromBuiltInType(SpecialType? type)
+    {
+        return type switch
+        {
+            SpecialType.System_Byte or SpecialType.System_SByte => 8,
+            SpecialType.System_Int16 or SpecialType.System_UInt16 => 16,
+            SpecialType.System_Int32 or SpecialType.System_UInt32 => 32,
+            SpecialType.System_Int64 or SpecialType.System_UInt64 => 64,
+            _ => null
+        };
     }
 
     public bool IsRegisterDefinedInExtensionSyntax(Location location, ISymbol s)

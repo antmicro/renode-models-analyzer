@@ -42,8 +42,9 @@ public class ModelRegistersAnalyzer : DiagnosticAnalyzer, IAnalyzerWithStatus
         {
             var identifier = new RegisterFormatIdentifier(ctx.SemanticModel, Logger, setStatusError);
             var registerAnalysis = new RegisterAnalysis(ctx.SemanticModel, Logger, setStatusIncomplete, setStatusError);
+            var enumAnalysis = new RegisterEnumAnalysis(ctx.SemanticModel);
 
-            var registers = RegisterEnumAnalyzerHelper.FindRegistersSymbols(ctx.SemanticModel);
+            var registers = enumAnalysis.FindRegistersSymbols().SelectMany(e => e.Registers);
             if(!registers.Any())
             {
                 Logger?.Debug("No Registers or empty Registers, this analysis won't run.");
@@ -58,7 +59,7 @@ public class ModelRegistersAnalyzer : DiagnosticAnalyzer, IAnalyzerWithStatus
 
                 // DefineMany fired, this register is a child register
                 // no diagnostics to report, but not undefined either
-                if(registerAnalysis.GetParentRegisterName(enumMember) is not null)
+                if(registerAnalysis.GetDummyReg(enumMember) is not null)
                 {
                     continue;
                 }

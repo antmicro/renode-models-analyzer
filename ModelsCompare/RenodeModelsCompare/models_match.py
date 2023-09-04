@@ -5,13 +5,14 @@
 # Full license text is available in 'LICENSE'.
 #
 from typing import List
-import skcriteria as skc
-from skcriteria.preprocessing import invert_objectives, scalers
-from skcriteria.madm.similarity import TOPSIS
 
 from RenodeModelsCompare.regcompare import RegCompare
 
 def match_most_similar(comparison_results: 'List[RegCompare.CompareResult]') -> None:
+    import skcriteria as skc
+    from skcriteria.preprocessing import invert_objectives, scalers
+    from skcriteria.madm.similarity import TOPSIS
+
     data = []
     keys = []
     for result in comparison_results:

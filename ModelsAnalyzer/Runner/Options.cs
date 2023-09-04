@@ -23,8 +23,11 @@ public class Options
 
     ///------------
 
-    [Option("debugger-wait", Default = false, HelpText = "Wait for debugger to connect.")]
+    [Option('d', "debugger-wait", Default = false, HelpText = "Wait for debugger to connect.")]
     public bool WaitForDebugger { get; private set; }
+
+    [Option("compilation-diagnostics", Default = false, HelpText = "Print solution/project compilation diagnostics above \"hidden\" level. Can be extremely long. This has nothing to do with the analyzer diagnostics.")]
+    public bool PrintCompilationDiagnostics { get; private set; }
 
     [Option('l', "logLevel", Default = "Debug", HelpText = "Set the log level.")]
     public string LogLevel { get; private set; }
