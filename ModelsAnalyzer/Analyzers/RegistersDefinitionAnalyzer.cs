@@ -13,9 +13,9 @@ using static ModelsAnalyzer.SymbolHelpers;
 namespace ModelsAnalyzer;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-public class ModelRegistersAnalyzer : DiagnosticAnalyzer, IAnalyzerWithStatus
+public class RegistersDefinitionAnalyzer : DiagnosticAnalyzer, IAnalyzerWithStatus
 {
-    public ModelRegistersAnalyzer()
+    public RegistersDefinitionAnalyzer()
     {
         setStatusError = () => { AnalyzerStatus.Error(); };
         setStatusIncomplete = () => { AnalyzerStatus.Incomplete(); };

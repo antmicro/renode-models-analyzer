@@ -144,7 +144,7 @@ dotnet run --project ModelsAnalyzer/Runner/Runner.csproj \
 -- -s renode/Renode_NET.sln --severity Info \
 --files-whitelist "Potato_UART.cs" "Litex_UART.cs" "TrivialUart.cs" "AmbiqApollo4_IOMaster.cs" \
  "AmbiqApollo4_Timer.cs" "EOSS3_PacketFifo.cs" "NRF52840_EGU.cs" "AppUart.cs" "GIC.cs" \
---analyzers-whitelist ModelRegistersAnalyzer
+--analyzers-whitelist RegistersDefinitionAnalyzer
 ```
 
 * #### Get coverage of PotatoUart
