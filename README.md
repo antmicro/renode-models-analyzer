@@ -1,5 +1,5 @@
 # Renode Models Analyzer
-Copyright (c) 2022-2023 [Antmicro](https://www.antmicro.com)
+Copyright (c) 2022-2024 [Antmicro](https://www.antmicro.com)
 
 Renode Models Analyzer aims to analyze and extract data from Renode peripheral models, report diagnostics, generate automatic reports and compare peripheral models for best fitness.
 
@@ -290,7 +290,9 @@ The coverage data can be used by `ModelsCompare` to generate layout tables.
 
 # Renode Models Compare
 
-This subproject can be used to parse JSON output from `ModelsAnalyzer`'s analyzers and print it in human-readable format. It can also be used to compare peripherals. Please note, that this tool can only be used, if you obtained output from the analyzers, using the `ModelsAnalyzer` tool. Refer to the previous section for usage samples.
+This subproject can be used to parse JSON output from `ModelsAnalyzer`'s analyzers and print it in human-readable format. It can also be used to compare peripherals. Another usage of this tool is to convert between different peripheral representations - e.g. generating SystemRDL models' descriptions from Renode peripheral data.
+
+Please note, that this tool can only be used, if you obtained output from the analyzers, using the `ModelsAnalyzer` tool. Refer to the previous section for usage samples.
 
 ## Requirements
 
@@ -333,7 +335,25 @@ subcommands:
   {summary,compare,misc}
     summary             Print summary of peripheral from JSON/SVD data
     compare             Compare peripheral models
+    convert             Convert between file formats
     misc                Misc helper/debugging utils
+```
+
+### Generate SystemRDL files
+
+To generate RDL files for a peripheral use:
+```
+renode-models-compare convert peripheral-data/ --to-systemrdl artifacts/rdls/peripheral.rdl --fill-empty-registers --compact-groups
+```
+
+These switches are currently available:
+* `--unwind-register-array` - unwind `DefineMany` to separate registers instead of using arrays. This might be necessary, due to limitations in RDL compiler, if evaluation fails later due to interleaving ranges.
+* `--fill-empty-registers` - fill registers with no fields, with a dummy R/W field, so the resulting RDL file is legal.
+* `--compact-groups` - if there are many Register Groups in a single peripheral (several register enums), put them in one output file, instead of splitting into separate files.
+
+You can verify the correctness of the generated RDL file, by invoking SystemRDL compiler:
+```
+renode-models-compare misc peripheral.rdl --validate-rdl
 ```
 
 ### Generate report
@@ -346,7 +366,7 @@ Report will contain diagnostics if they have been written by analyzers, and will
 
 You can also generate reports from `svd` files, or convert them to our internal representation. Currently, the only benefit is checking correctness of `svd` parser or inspecting layout manually.
 ```
-python3 -m RenodeModelsCompare misc STM32F401.svd:CRC --to-json crc-svd.json
+python3 -m RenodeModelsCompare convert --from-svd STM32F401.svd:CRC crc-svd.json
 python3 -m RenodeModelsCompare summary crc-svd.json --html crc-svd.html
 ```
 
