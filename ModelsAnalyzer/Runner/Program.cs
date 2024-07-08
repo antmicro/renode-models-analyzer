@@ -48,12 +48,12 @@ public static partial class Runner
                 )
         );
 
-        var analyzerObjs = analyzerList.Select(a => Activator.CreateInstance(a)).Cast<DiagnosticAnalyzer>();
-
         if(Options.CurrentOptions.AnalyzerWhitelist.Any())
         {
-            analyzerObjs = analyzerObjs.Where(a => Options.CurrentOptions.AnalyzerWhitelist.Contains(a.GetType().Name));
+            analyzerList = analyzerList.Where(a => Options.CurrentOptions.AnalyzerWhitelist.Contains(a.Name));
         }
+
+        var analyzerObjs = analyzerList.Select(a => Activator.CreateInstance(a)).Cast<DiagnosticAnalyzer>();
 
         if(analyzerObjs.Any())
         {
