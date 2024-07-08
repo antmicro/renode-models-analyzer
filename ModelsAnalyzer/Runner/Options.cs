@@ -18,7 +18,7 @@ public class Options
     [Option('s', "solution", Required = true, HelpText = "Set path to Solution.", SetName = "solution")]
     public string Solution { get; private set; }
 
-    [Option('a', "analyzers", HelpText = "Set path to analyzers dll.")]
+    [Option("analyzers-lib", HelpText = "Set path to analyzers dll.")]
     public IEnumerable<string> Analyzers { get; private set; }
 
     ///------------
@@ -35,10 +35,10 @@ public class Options
     [Option("severity", Default = DiagnosticSeverity.Hidden, HelpText = "Set the analyzer global severity level to filter output.")]
     public DiagnosticSeverity Severity { get; private set; }
 
-    [Option("analyzers-whitelist", HelpText = "Run only these analyzers.")]
+    [Option('a', "analyzers", HelpText = "Run only these analyzers.")]
     public IEnumerable<string> AnalyzerWhitelist { get; private set; }
 
-    [Option("files-whitelist", HelpText = "Analyze only these files.")]
+    [Option('f', "files", HelpText = "Analyze only these files.")]
     public IEnumerable<string> FilesWhitelist { get; private set; }
 
     [Option("collapse-empty", Default = false, HelpText = "Collapse report of traversing projects and files, that were not analyzed.")]

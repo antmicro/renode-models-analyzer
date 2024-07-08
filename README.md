@@ -90,9 +90,9 @@ $ renode-analysis-runner -h
 
   --severity               (Default: Hidden) Set the analyzer global severity level to filter output.
 
-  --analyzers-whitelist    Run only these analyzers.
+  --analyzers              Run only these analyzers.
 
-  --files-whitelist        Analyze only these files.
+  --files                  Analyze only these files.
 
   --collapse-empty         (Default: false) Collapse report of traversing projects and files, that were not analyzed.
 
@@ -114,9 +114,9 @@ Most are self-explanatory. You are only required to give either project `-p` or 
 
 * By default, Runner will load analyzers from `RenodeAnalyzers.dll`. They are referenced in the project file, and come prepacked if you decide to install Runner as a dotnet tool. You can give an explicit path with `-a`.
 
-* `--analyzers-whitelist` specifies a subset of analyzers to load e.g. `---analyzers-whitelist ResetAnalyzer`.
+* `--analyzers` specifies a subset of analyzers to load e.g. `---analyzers ResetAnalyzer`.
 
-* `--files-whitelist` specifies a subset of files to analyze e.g. `--files-whitelist Potato_UART.cs`. It's case sensitive.
+* `--files` specifies a subset of files to analyze e.g. `--files Potato_UART.cs`. It's case sensitive.
 
 * `--show-summary` displays summary of failed and passed analyzer runs for each parsed file. Note that the results are used to determine analyzers' fitness. They don't aggregate results of analysis (e.g. diagnostic rules), but whether the analyzer was able to parse the peripheral successfully - analyzers themselves report these summaries. It's a health-checking facility.
 
@@ -142,9 +142,9 @@ To limit data gathering to a subset of files and analyzers, you can use the foll
 ```
 dotnet run --project ModelsAnalyzer/Runner/Runner.csproj \
 -- -s renode/Renode_NET.sln --severity Info \
---files-whitelist "Potato_UART.cs" "Litex_UART.cs" "TrivialUart.cs" "AmbiqApollo4_IOMaster.cs" \
+--files "Potato_UART.cs" "Litex_UART.cs" "TrivialUart.cs" "AmbiqApollo4_IOMaster.cs" \
  "AmbiqApollo4_Timer.cs" "EOSS3_PacketFifo.cs" "NRF52840_EGU.cs" "AppUart.cs" "GIC.cs" \
---analyzers-whitelist RegistersDefinitionAnalyzer
+--analyzers RegistersDefinitionAnalyzer
 ```
 
 * #### Get coverage of PotatoUart
@@ -153,8 +153,8 @@ This command executes RegistersCoverageAnalyzer on PotatoUART, with `Trace` log 
 
 ```
 renode-analysis-runner -s renode/Renode_NET.sln \
---analyzers-whitelist RegistersCoverageAnalyzer \
---files-whitelist Potato_UART.cs -l Trace \
+--analyzers RegistersCoverageAnalyzer \
+--files Potato_UART.cs -l Trace \
 --output . --collapse-empty
 ```
 
@@ -241,8 +241,8 @@ Get coverage analysis for STM32F1GPIOPort:
 
 ```
 renode-analysis-runner -s renode/Renode_NET.sln \
---analyzers-whitelist RegistersCoverageAnalyzer \
---files-whitelist STM32F1GPIOPort.cs -l Trace \
+--analyzers RegistersCoverageAnalyzer \
+--files STM32F1GPIOPort.cs -l Trace \
 --output . --show-summary --collapse-empty
 ```
 
@@ -252,8 +252,8 @@ If you see output file, this analysis displays erroneous data: it can't get info
 * #### Coverage for AmbiqApollo4_GPIO
 ```
 renode-analysis-runner -s renode/Renode_NET.sln \
---analyzers-whitelist RegistersCoverageAnalyzer \
---files-whitelist AmbiqApollo4_GPIO.cs -l Trace \
+--analyzers RegistersCoverageAnalyzer \
+--files AmbiqApollo4_GPIO.cs -l Trace \
 --output . --show-summary --collapse-empty
 ```
 
