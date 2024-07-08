@@ -41,8 +41,8 @@ public class Options
     [Option('f', "files", HelpText = "Analyze only these files.")]
     public IEnumerable<string> FilesWhitelist { get; private set; }
 
-    [Option("collapse-empty", Default = false, HelpText = "Collapse report of traversing projects and files, that were not analyzed.")]
-    public bool CollapseEmpty { get; private set; }
+    [Option("no-collapse", Default = false, HelpText = "Don't collapse report of traversing projects and files, that were not analyzed.")]
+    public bool NoCollapseEmpty { get; private set; }
 
     [Option('o', "output", Default = "", HelpText = "Output directory for analysis results.")]
     public string OutputDirectory { get; private set; }

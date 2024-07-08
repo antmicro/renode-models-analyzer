@@ -39,10 +39,10 @@ Below is the simplest way to run analysis on the entire solution:
 
 ```
 dotnet run --configuration Release --project ModelsAnalyzer/Runner/Runner.csproj \
--- -s renode/Renode_NET.sln --collapse-empty --show-summary
+-- -s renode/Renode_NET.sln --show-summary
 ```
 
-`--collapse-empty` is recommended, so Runner doesn't display full walkthrough through solution, including files that don't contain peripherals. Still, it has to walk trough the entire solution, to verify which are peripherals and which are not (a peripheral is a class implementing `IPeripheral` interface).
+By default, Runner doesn't display full walkthrough through solution, including files that don't contain peripherals. Still, it has to walk trough the entire solution, to verify which are peripherals and which are not (a peripheral is a class implementing `IPeripheral` interface). To display the entire walkthough you can pass `--no-collapse` option.
 
 `--show-summary` displays analyzers health-checks per each parsed file (whether the analyzer finished with success).
 
@@ -94,7 +94,7 @@ $ renode-analysis-runner -h
 
   --files                  Analyze only these files.
 
-  --collapse-empty         (Default: false) Collapse report of traversing projects and files, that were not analyzed.
+  --no-collapse            (Default: false) Don't collapse report of traversing projects and files, that were not analyzed.
 
   -o, --output             (Default: ) Output directory for analysis results.
 
@@ -155,7 +155,7 @@ This command executes RegistersCoverageAnalyzer on PotatoUART, with `Trace` log 
 renode-analysis-runner -s renode/Renode_NET.sln \
 --analyzers RegistersCoverageAnalyzer \
 --files Potato_UART.cs -l Trace \
---output . --collapse-empty
+--output .
 ```
 
 Since we are loading the whole solution it will take a while. You can load only `Peripherals_NET.csproj` to speed this up.
@@ -243,7 +243,7 @@ Get coverage analysis for STM32F1GPIOPort:
 renode-analysis-runner -s renode/Renode_NET.sln \
 --analyzers RegistersCoverageAnalyzer \
 --files STM32F1GPIOPort.cs -l Trace \
---output . --show-summary --collapse-empty
+--output . --show-summary
 ```
 
 If you see output file, this analysis displays erroneous data: it can't get information about coverage of registers: `ConfigurationLow` and `ConfigurationHigh` since there is a loop involved. This is still work in progress, and in a sample as simple as this, could be at least partially resolved.
@@ -254,7 +254,7 @@ If you see output file, this analysis displays erroneous data: it can't get info
 renode-analysis-runner -s renode/Renode_NET.sln \
 --analyzers RegistersCoverageAnalyzer \
 --files AmbiqApollo4_GPIO.cs -l Trace \
---output . --show-summary --collapse-empty
+--output . --show-summary
 ```
 
 This sample is a total failure. Not only the analyzer didn't detect that it deals with cases it cannot parse and reports success, you will see a lot of registers without fields and width:

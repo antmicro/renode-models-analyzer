@@ -218,7 +218,7 @@ internal class AnalysisRunner
                 selectedDocuments = selectedDocuments.Where(d => analysisContextOptions.FilesWhitelist.Contains(d.Name));
             }
 
-            if(analysisContextOptions.CollapseEmpty && !selectedDocuments.Any())
+            if(!analysisContextOptions.NoCollapseEmpty && !selectedDocuments.Any())
             {
                 continue;
             }
@@ -235,7 +235,7 @@ internal class AnalysisRunner
                     var syntaxTree = await document.GetSyntaxTreeAsync();
                     if(syntaxTree is null)
                     {
-                        if(analysisContextOptions.CollapseEmpty)
+                        if(!analysisContextOptions.NoCollapseEmpty)
                         {
                             reportBuilder.Clear();
                         }
@@ -252,7 +252,7 @@ internal class AnalysisRunner
                     if(!peripherals.Any())
                     {
                         reportBuilder.Append("No peripherals here (no class implements either directly or via inheritance, IPeripheral interface), skipping.");
-                        if(analysisContextOptions.CollapseEmpty)
+                        if(!analysisContextOptions.NoCollapseEmpty)
                         {
                             reportBuilder.Clear();
                         }
