@@ -15,9 +15,12 @@ apt install dotnet-sdk-6.0
 
 ## Building
 
-To start using `ModelsAnalyzer` you need to first build Renode. You might clone it yourself, or use the `renode` submodule in this repo.
+To start using `ModelsAnalyzer` you need to first build Renode. You can get the source code with:
+```
+git clone https://github.com/renode/renode
+```
 
-If you downloaded Renode sources to `renode/` directory or are using the submodule, you can run the following commands:
+After you downloaded Renode sources to `renode/` directory, you can run the following commands:
 ```
 cd renode && ./build.sh --net && cd ..
 ```
