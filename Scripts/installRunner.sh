@@ -4,7 +4,7 @@
 
 cd ModelsAnalyzer/Runner
 dotnet pack --configuration Release
-dotnet tool install --global --add-source ./package RenodeAnalyzersRunner
+dotnet tool update --global --add-source ./package RenodeAnalyzersRunner
 
 # run this command to remove the tool
 # dotnet tool uninstall -g RenodeAnalyzersRunner
