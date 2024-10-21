@@ -16,6 +16,12 @@ dependencies = [
     "bidict == 0.22.1"
 ]
 
+[project.optional-dependencies]
+validate = [
+    "systemrdl-compiler<2,>=1.27.1",
+    "click==8.1.*",
+]
+
 [project.scripts]
 renode-models-compare = "RenodeModelsCompare.__main__:main"
 

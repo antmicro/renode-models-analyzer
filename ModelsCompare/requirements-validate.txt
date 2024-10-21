@@ -1,0 +1,2 @@
+systemrdl-compiler<2,>=1.27.1
+click==8.1.*
