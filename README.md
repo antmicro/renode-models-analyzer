@@ -161,7 +161,7 @@ renode-analysis-runner -s renode/Renode_NET.sln \
 --output .
 ```
 
-Since we are loading the whole solution it will take a while. You can load only `Peripherals_NET.csproj` to speed this up.
+Since we are loading the whole solution it will take a while.
 You should have now `Potato_UART.cs-registersInfo.json` in your working directory. Its contents can look like this:
 ```
   {
