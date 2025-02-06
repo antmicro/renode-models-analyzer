@@ -1,5 +1,5 @@
 # Renode Models Analyzer
-Copyright (c) 2022-2024 [Antmicro](https://www.antmicro.com)
+Copyright (c) 2022-2025 [Antmicro](https://www.antmicro.com)
 
 Renode Models Analyzer aims to analyze and extract data from Renode peripheral models, report diagnostics, generate automatic reports and compare peripheral models for best fitness.
 

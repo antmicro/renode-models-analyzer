@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AssemblyName>RenodeAnalyzersRunner</AssemblyName>
@@ -21,8 +21,8 @@
     <ProjectReference Include="..\Utils\Utils.csproj" />
 
     <Reference Include="Analyzers">
-      <HintPath>..\Analyzers\bin\Debug\net6.0\RenodeAnalyzers.dll</HintPath>
-      <HintPath>..\Analyzers\bin\Release\net6.0\RenodeAnalyzers.dll</HintPath>
+      <HintPath>..\Analyzers\bin\Debug\net8.0\RenodeAnalyzers.dll</HintPath>
+      <HintPath>..\Analyzers\bin\Release\net8.0\RenodeAnalyzers.dll</HintPath>
     </Reference>
   </ItemGroup>
 
