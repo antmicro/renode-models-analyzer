@@ -22,7 +22,7 @@ git clone https://github.com/renode/renode
 
 After you downloaded Renode sources to `renode/` directory, you can run the following commands:
 ```
-cd renode && ./build.sh --net && cd ..
+cd renode && ./build.sh && cd ..
 ```
 
 To install dependencies needed to build and run Renode on your platform, refer to [the manual](https://renode.readthedocs.io/en/latest/advanced/building_from_sources.html#building-from-source).
