@@ -6,11 +6,11 @@ Renode Models Analyzer aims to analyze and extract data from Renode peripheral m
 This project is divided into two sub-projects: `ModelsAnalyzer`, that contains diagnostic analyzers and is responsible for data extraction and `ModelsCompare` that aims to create reports from data and use the data to compare peripheral models.
 
 ## Requirements
-In order to compile the application you need to install `.NET SDK 6.0`. You can refer to [official .NET site](https://dotnet.microsoft.com/en-us/download/dotnet/6.0) for installation instructions and packages.
+In order to compile the application you need to install `.NET SDK 10.0`. You can refer to [official .NET site](https://dotnet.microsoft.com/en-us/download/dotnet/10.0) for installation instructions and packages.
 
 In many Linux distros there already exist .NET packages in official repositories. For example, for Ubuntu you can just use `apt`:
 ```
-apt install dotnet-sdk-6.0
+apt install dotnet-sdk-10.0
 ```
 
 ## Building
